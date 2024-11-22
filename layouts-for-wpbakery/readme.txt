@@ -2,9 +2,9 @@
 Contributors: techeshta, alkesh7, vastarpara, hadihirpara
 Tags: wpbakery layouts, wpbakery layouts addon, free wpbakery layouts, wpbakery layouts module, free templates, readymade templates layout, wpbakery layout templates, wpbakery page builder templates, landing page template
 Requires at least: 4.4
-Tested up to: 6.5
+Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.0.9
+Stable tag: 1.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -35,7 +35,7 @@ Layouts for WPBakery plugin suitable for all kinds of one-page WordPress website
 * Digital Agency Website
 * Photography Website
 * Fitness Related Website
-* Beauty Related Website 
+* Beauty Related Website
 * Etc.
 
 ### Precisely Designed 30+ Layouts
@@ -175,6 +175,11 @@ You can reach out via the official [support forum](https://wordpress.org/support
 == Changelog ==
 
 = 1.1 =
+Release Date: November 22nd, 2024
+* Updated: Latest WordPress 6.7 compatibility Check
+* Updated: Latest Elementor 3.25.6 compatibility Check
+
+= 1.0.10 =
 Release Date: July 26th, 2024
 * Updated: Latest WordPress 6.6.1 compatibility Check
 * Updated: Latest Elementor 3.23 compatibility Check
