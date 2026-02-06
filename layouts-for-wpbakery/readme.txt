@@ -2,9 +2,9 @@
 Contributors: techeshta, alkesh7, vastarpara, hadihirpara
 Tags: wpbakery layouts, wpbakery layouts addon, free wpbakery layouts, wpbakery layouts module, free templates, readymade templates layout, wpbakery layout templates, wpbakery page builder templates, landing page template
 Requires at least: 4.4
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.1.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -121,13 +121,13 @@ Well, optimized and lightweight code that won't hurt your server.
 * Complete your landing page website in less than 5 minutes.
 * Clean code, layout, and design.
 
-### Technical Support 
+### Technical Support
 
 We're active for any support issues and feature suggestions. So, I hope you will love it. If you have any more questions, visit our support on the [Plugin's Forum](https://wordpress.org/support/plugin/layouts-for-wpbakery/). Feel free to [contact us](https://www.techeshta.com/contact-us/?utm_medium=wp.org&utm_source=wordpressorg&utm_campaign=readme&utm_content=techeshta) if you want any custom widgets for your site.
 
 <strong>Note:</strong> This plugin is an addon of [WPBakery Page Builder](https://wpbakery.com) and will only work with WPBakery Page Builder installed.
 
-### Like Layouts for WPBakery? 
+### Like Layouts for WPBakery?
 
 Don't forget to rate us on [WordPress](https://wordpress.org/support/plugin/layouts-for-wpbakery/reviews/?filter=5).
 
@@ -150,19 +150,19 @@ Don't forget to rate us on [WordPress](https://wordpress.org/support/plugin/layo
 
 == Frequently Asked Questions ==
 
-= For which purposes can I use Layouts for WPBakery? = 
+= For which purposes can I use Layouts for WPBakery? =
 Layouts for WPBakery give you top-niche, readymade landing pages or designs for your favorite WordPress WPBakery Page Builder.
 
-= Can I Import this readymade layout to my WPBakery templates library? = 
+= Can I Import this readymade layout to my WPBakery templates library? =
 Yes, you can. Layouts for WPBakery plugin allow you to import any layout to the Template Library and pages too!
 
-= All the starter templates free? = 
+= All the starter templates free? =
 Yes, get over 30+ free ready-to-use websites as of now. You can pick a website template that suits your needs.
 
-= Can I change color or customize Imported layouts as per my wish? = 
+= Can I change color or customize Imported layouts as per my wish? =
 Yes, of course. Why not! You are free to use/modify it as per your project requirements.
- 
-= Where can I ask for help? = 
+
+= Where can I ask for help? =
 You can reach out via the official [support forum](https://wordpress.org/support/plugin/layouts-for-wpbakery) on WordPress.org.
 
 == Screenshots ==
@@ -173,6 +173,10 @@ You can reach out via the official [support forum](https://wordpress.org/support
 4. Layouts for WPBakery - Install Preview
 
 == Changelog ==
+
+= 1.1.2 =
+Release Date: December 19th, 2025
+* Updated: Latest WordPress 6.9 compatibility Check
 
 = 1.1.1 =
 Release Date: April 22nd, 2025
@@ -190,7 +194,7 @@ Release Date: July 26th, 2024
 Release Date: April 8th, 2024
 
 * Updated: Latest WordPress 6.5 compatibility Check
-* Fixed: Resolved Security, Performance, and Accessibility issue 
+* Fixed: Resolved Security, Performance, and Accessibility issue
 
 = 1.0.8 =
 Release Date: October 5th, 2023
