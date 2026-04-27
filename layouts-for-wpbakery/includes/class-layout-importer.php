@@ -1,4 +1,7 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly
+}
 
 /**
  * Class for importing a template.
@@ -6,10 +9,6 @@
  * @package Layouts
  */
 
-/**
- * Class for importing a template.
- *
- */
 class Layouts_WPB_Importer {
 
     public function __construct() {
@@ -37,18 +36,18 @@ class Layouts_WPB_Importer {
 
         if ( wp_verify_nonce( $_POST['nonce'], 'ajax-nonce' ) ) {
             $template = Layouts_WPB_Remote::lfw_get_instance()->get_template_content($template_id);
-            
+
             // Check Error
             if (is_wp_error($template)) {
                 return false;
             }
-            
+
             // Check $template as string
             if (is_string($template) && !empty($template)) {
                 echo esc_html($template);
                 exit;
             }
-            
+
             // Finally create the page or template.
             $page_id = $this->create_page($template, $with_page);
             echo esc_html($page_id);
@@ -166,7 +165,7 @@ class Layouts_WPB_Importer {
     private function lfw_get_new_image($img_id) {
         $img_exist = '';
         $image_url = $this->lfw_get_image_url($img_id);
-        
+
         // Check $image_url not empty
         if (!empty($image_url)) {
             $slug = basename($image_url);

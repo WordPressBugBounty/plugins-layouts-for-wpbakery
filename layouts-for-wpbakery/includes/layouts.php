@@ -1,3 +1,9 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly
+}
+?>
+
 <div class="lfw-body">
     <div class="lfw-header">
         <h1 class="wp-heading-inline"><?php esc_html_e('Layouts for WPBakery', 'layouts-for-wpbakery'); ?></h1>
