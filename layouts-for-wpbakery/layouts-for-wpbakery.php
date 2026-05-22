@@ -3,7 +3,7 @@
  * Plugin Name: Layouts for WPBakery
  * Plugin URI: https://www.techeshta.com/product/layouts-for-wpbakery/
  * Description: Beautifully designed, Free templates, Handcrafted for popular WPBakery page builder.
- * Version: 1.1.3
+ * Version: 1.1.4
  * Author: Techeshta
  * Author URI: https://www.techeshta.com
  * License: GPLv2 or later

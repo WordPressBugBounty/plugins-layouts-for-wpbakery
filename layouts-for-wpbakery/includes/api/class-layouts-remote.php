@@ -42,8 +42,8 @@ class Layouts_WPB_Remote {
      * Initialize
      */
     public function hooks() {
+        // Only authenticated users may trigger a sync; the nopriv hook is intentionally omitted.
         add_action('wp_ajax_handle_sync', array($this, 'template_sync'));
-        add_action('wp_ajax_nopriv_handle_sync', array($this, 'template_sync'));
     }
 
     /**
@@ -52,14 +52,26 @@ class Layouts_WPB_Remote {
      */
     public function template_sync() {
 
-        $response = $this->templates_list($force_update = true);
-        $response = $this->categories_list($force_update = true);
+        // Capability check — only administrators may force a remote sync.
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( '-1', 403 );
+        }
 
-        if ($response) {
+        // Nonce verification — the nonce is created in lfw_admin_scripts() as 'ajax-nonce'.
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ajax-nonce' ) ) {
+            wp_die( '-1', 403 );
+        }
+
+        $response = $this->templates_list( $force_update = true );
+        $response = $this->categories_list( $force_update = true );
+
+        if ( $response ) {
             echo 'success';
         } else {
             echo 'error';
         }
+
+        wp_die();
     }
 
     /**

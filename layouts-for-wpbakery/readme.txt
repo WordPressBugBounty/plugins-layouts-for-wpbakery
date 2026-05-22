@@ -1,10 +1,10 @@
 === Layouts for WPBakery ===
 Contributors: techeshta, alkesh7, vastarpara, hadihirpara
-Tags: wpbakery layouts, wpbakery layouts addon, free wpbakery layouts, wpbakery layouts module, free templates, readymade templates layout, wpbakery layout templates, wpbakery page builder templates, landing page template
+Tags: free wpbakery templates, wpbakery layouts addon, wpbakery readymade layout templates, wpbakery page builder templates, free landing page templates
 Requires at least: 5.8
-Tested up to: 6.9
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.1.3
+Stable tag: 1.1.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -174,7 +174,12 @@ You can reach out via the official [support forum](https://wordpress.org/support
 
 == Changelog ==
 
+= 1.1.4 =
+Release Date: May 22nd, 2026
+* Fixed: Security issues resolved
+
 = 1.1.3 =
+Release Date: Apr 27th, 2026
 * Enhanced compatibility with latest WordPress version and minor bug fixes
 
 = 1.1.2 =
