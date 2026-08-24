@@ -22,8 +22,8 @@ class Layouts_WPB_Importer {
      * Initialize
      */
     public function hooks() {
+        // Only authenticated users may import a template; the nopriv hook is intentionally omitted.
         add_action('wp_ajax_handle_import', array($this, 'handle_import'));
-        add_action('wp_ajax_nopriv_handle_import', array($this, 'handle_import'));
     }
 
     /**
@@ -31,28 +31,36 @@ class Layouts_WPB_Importer {
      */
     public function handle_import() {
 
-        $template_id = sanitize_text_field($_POST['template_id']);
-        $with_page = sanitize_text_field($_POST['with_page']);
+        // Capability check — importing creates pages/media and updates options, so require an admin.
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( '-1', 403 );
+        }
 
-        if ( wp_verify_nonce( $_POST['nonce'], 'ajax-nonce' ) ) {
-            $template = Layouts_WPB_Remote::lfw_get_instance()->get_template_content($template_id);
+        // Nonce verification — the nonce is created in lfw_admin_scripts() as 'ajax-nonce'.
+        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ajax-nonce' ) ) {
+            wp_die( '-1', 403 );
+        }
 
-            // Check Error
-            if (is_wp_error($template)) {
-                return false;
-            }
+        $template_id = isset( $_POST['template_id'] ) ? sanitize_text_field( wp_unslash( $_POST['template_id'] ) ) : '';
+        $with_page = isset( $_POST['with_page'] ) ? sanitize_text_field( wp_unslash( $_POST['with_page'] ) ) : '';
 
-            // Check $template as string
-            if (is_string($template) && !empty($template)) {
-                echo esc_html($template);
-                exit;
-            }
+        $template = Layouts_WPB_Remote::lfw_get_instance()->get_template_content($template_id);
 
-            // Finally create the page or template.
-            $page_id = $this->create_page($template, $with_page);
-            echo esc_html($page_id);
+        // Check Error
+        if (is_wp_error($template)) {
+            return false;
+        }
+
+        // Check $template as string
+        if (is_string($template) && !empty($template)) {
+            echo esc_html($template);
             exit;
         }
+
+        // Finally create the page or template.
+        $page_id = $this->create_page($template, $with_page);
+        echo esc_html($page_id);
+        exit;
     }
 
     /**
@@ -230,8 +238,12 @@ class Layouts_WPB_Importer {
     private function lfw_insert_media_from_url($image_url) {
         $attachment_id = '';
         if (!empty($image_url) && strpos($image_url, 'Missing Attachment') !== true) {
+            $response = wp_safe_remote_get($image_url, array('timeout' => 15));
+            if (is_wp_error($response) || 200 !== (int) wp_remote_retrieve_response_code($response)) {
+                return $attachment_id;
+            }
             $filename = basename($image_url);
-            $upload_file = wp_upload_bits($filename, null, file_get_contents($image_url));
+            $upload_file = wp_upload_bits($filename, null, wp_remote_retrieve_body($response));
             if (!$upload_file['error']) {
                 $wp_filetype = wp_check_filetype($filename, null);
                 $attachment = array(

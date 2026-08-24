@@ -2,9 +2,9 @@
 Contributors: techeshta, alkesh7, vastarpara, hadihirpara
 Tags: free wpbakery templates, wpbakery layouts addon, wpbakery readymade layout templates, wpbakery page builder templates, free landing page templates
 Requires at least: 5.8
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.4
+Stable tag: 1.1.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -173,6 +173,13 @@ You can reach out via the official [support forum](https://wordpress.org/support
 4. Layouts for WPBakery - Install Preview
 
 == Changelog ==
+
+= 1.1.5 =
+Release Date: August 24th, 2026
+* Updated: Latest WordPress 7.1 compatibility check
+* Fixed: Security hardening for the template import AJAX endpoint (added capability check, removed unauthenticated access)
+* Fixed: Remote image import now uses the WordPress HTTP API instead of a direct file read
+* Removed: Manual textdomain loading (unnecessary since WordPress.org auto-loads plugin translations)
 
 = 1.1.4 =
 Release Date: May 22nd, 2026

@@ -3,7 +3,7 @@
  * Plugin Name: Layouts for WPBakery
  * Plugin URI: https://www.techeshta.com/product/layouts-for-wpbakery/
  * Description: Beautifully designed, Free templates, Handcrafted for popular WPBakery page builder.
- * Version: 1.1.4
+ * Version: 1.1.5
  * Author: Techeshta
  * Author URI: https://www.techeshta.com
  * License: GPLv2 or later
@@ -47,7 +47,6 @@ class Layouts_For_WPBakery {
      * Initialize
      */
     public function hooks() {
-        add_action('plugins_loaded', array($this, 'lfw_load_language_files'));
         add_action('admin_enqueue_scripts', array($this, 'lfw_admin_scripts',));
         register_activation_hook(LFW_FILE, array($this, 'lfw_plugin_activation'));
     }
@@ -58,13 +57,6 @@ class Layouts_For_WPBakery {
     public function lfw_include_files() {
         include_once( LFW_DIR . 'includes/class-layout-importer.php' );
         include_once( LFW_DIR . 'includes/api/class-layouts-remote.php' );
-    }
-
-    /**
-     * @return Loads plugin textdomain
-     */
-    public function lfw_load_language_files() {
-        load_plugin_textdomain('layouts-for-wpbakery', false, dirname(plugin_basename(__FILE__)) . '/languages');
     }
 
     /**
