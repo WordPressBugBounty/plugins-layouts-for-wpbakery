@@ -4,7 +4,7 @@ Tags: free wpbakery templates, wpbakery layouts addon, wpbakery readymade layout
 Requires at least: 5.8
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.1.5
+Stable tag: 2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -129,7 +129,7 @@ We're active for any support issues and feature suggestions. So, I hope you will
 
 ### Like Layouts for WPBakery?
 
-Don't forget to rate us on [WordPress](https://wordpress.org/support/plugin/layouts-for-wpbakery/reviews/?filter=5).
+Don't forget to rate us on [WordPress](https://wordpress.org/support/plugin/layouts-for-wpbakery/reviews/#new-post).
 
 <strong>Premium Version Coming Soon with Many Features</strong>
 
@@ -173,6 +173,14 @@ You can reach out via the official [support forum](https://wordpress.org/support
 4. Layouts for WPBakery - Install Preview
 
 == Changelog ==
+
+= 2.0 =
+Release Date: September 28th, 2026
+* Fixed: Layout import/sync conflicts and error reporting.
+* Fixed: Import failures, missing images, and API outage handling.
+* Security: Improved image validation and layout title sanitization.
+* Improved: Faster imports by avoiding duplicate image downloads.
+* Updated: WordPress 7.1.2 compatibility.
 
 = 1.1.5 =
 Release Date: August 24th, 2026

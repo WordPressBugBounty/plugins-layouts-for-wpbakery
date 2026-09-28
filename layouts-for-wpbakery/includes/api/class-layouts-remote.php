@@ -1,191 +1,256 @@
 <?php
+/**
+ * Client for the remote Layouts for WPBakery template API.
+ *
+ * @package Layouts_For_WPBakery
+ */
 
-defined('ABSPATH') || exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
 /**
- * Handle Remote API requests.
+ * Handle remote API requests to www.layoutsforwpbakery.com.
  *
+ * Template and category lists are cached in transients; the "Sync Now"
+ * button (AJAX action lfw_handle_sync) forces a refresh.
  */
 class Layouts_WPB_Remote {
 
-    protected static $lfw_instance = NULL;
+	/**
+	 * Singleton instance.
+	 *
+	 * @var Layouts_WPB_Remote|null
+	 */
+	protected static $lfw_instance = null;
 
-    const TRANSIENT_TEMPLATE = 'page';
-    const TRANSIENT_CATEGORY = 'lfwa_template_category';
-    const TEMPLATES = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/templates';
-    const CATEGORIES = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/categories';
+	/**
+	 * Transient key for the cached templates list.
+	 *
+	 * @var string
+	 */
+	const TRANSIENT_TEMPLATE = 'lfw_templates';
 
-    public function __construct() {
-        $this->hooks();
-    }
+	/**
+	 * Transient key for the cached categories list.
+	 *
+	 * @var string
+	 */
+	const TRANSIENT_CATEGORY = 'lfw_categories';
 
-    /**
-     * Access plugin instance. You can create further instances by calling
-     */
-    public static function lfw_get_instance() {
-        if (NULL === self::$lfw_instance)
-            self::$lfw_instance = new self;
+	/**
+	 * API endpoint listing all templates.
+	 *
+	 * @var string
+	 */
+	const TEMPLATES = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/templates';
 
-        return self::$lfw_instance;
-    }
+	/**
+	 * API endpoint listing all template categories.
+	 *
+	 * @var string
+	 */
+	const CATEGORIES = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/categories';
 
-    /**
-     * API template URL.
-     * Holds the URL for getting a single template data.
-     *
-     * @var string API template URL.
-     */
-    private static $template_url = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/template/byid/?id=%d';
-    private static $image_url = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/image/byid/?id=%d';
+	/**
+	 * API template URL (sprintf() format, takes the template ID).
+	 *
+	 * @var string
+	 */
+	private static $template_url = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/template/byid/?id=%d';
 
-    /**
-     * Initialize
-     */
-    public function hooks() {
-        // Only authenticated users may trigger a sync; the nopriv hook is intentionally omitted.
-        add_action('wp_ajax_handle_sync', array($this, 'template_sync'));
-    }
+	/**
+	 * API image URL (sprintf() format, takes the remote media ID).
+	 *
+	 * @var string
+	 */
+	private static $image_url = 'https://www.layoutsforwpbakery.com/wp-json/layoutsforwpbakery/v1/image/byid/?id=%d';
 
-    /**
-     * Get a sync templates list.
-     * @return mixed|\WP_Error
-     */
-    public function template_sync() {
+	/**
+	 * Constructor.
+	 */
+	public function __construct() {
+		$this->hooks();
+	}
 
-        // Capability check — only administrators may force a remote sync.
-        if ( ! current_user_can( 'manage_options' ) ) {
-            wp_die( '-1', 403 );
-        }
+	/**
+	 * Access the shared instance.
+	 *
+	 * @return self
+	 */
+	public static function lfw_get_instance() {
+		if ( null === self::$lfw_instance ) {
+			self::$lfw_instance = new self();
+		}
+		return self::$lfw_instance;
+	}
 
-        // Nonce verification — the nonce is created in lfw_admin_scripts() as 'ajax-nonce'.
-        if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'ajax-nonce' ) ) {
-            wp_die( '-1', 403 );
-        }
+	/**
+	 * Register hooks.
+	 *
+	 * The action name is plugin-prefixed: the sibling Layouts for Elementor
+	 * plugin registers the generic wp_ajax_handle_sync, and with both
+	 * plugins active the first-loaded handler would answer both plugins'
+	 * requests.
+	 *
+	 * @return void
+	 */
+	public function hooks() {
+		add_action( 'wp_ajax_lfw_handle_sync', array( $this, 'template_sync' ) );
+	}
 
-        $response = $this->templates_list( $force_update = true );
-        $response = $this->categories_list( $force_update = true );
+	/**
+	 * AJAX handler: force-refresh the cached templates and categories lists.
+	 *
+	 * Prints "success" or "error".
+	 *
+	 * @return void
+	 */
+	public function template_sync() {
 
-        if ( $response ) {
-            echo 'success';
-        } else {
-            echo 'error';
-        }
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), Layouts_For_WPBakery::NONCE_ACTION ) ) {
+			wp_die( 'error', '', array( 'response' => 403 ) );
+		}
 
-        wp_die();
-    }
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'error', '', array( 'response' => 403 ) );
+		}
 
-    /**
-     * Get a templates list.
-     * @return mixed|\WP_Error
-     */
-    public function templates_list($force_update = false) {
+		$templates  = $this->templates_list( true );
+		$categories = $this->categories_list( true );
 
-        $response = get_transient(self::TRANSIENT_TEMPLATE);
+		echo ( is_array( $templates ) && is_array( $categories ) ) ? 'success' : 'error';
+		wp_die();
+	}
 
-        if (!$response || $force_update) {
+	/**
+	 * Get the templates list.
+	 *
+	 * @param bool $force_update Whether to bypass the transient cache.
+	 * @return array|string Decoded API response, or an error message.
+	 */
+	public function templates_list( $force_update = false ) {
+		return $this->cached_request( self::TRANSIENT_TEMPLATE, self::TEMPLATES, 'templates', 12 * HOUR_IN_SECONDS, $force_update );
+	}
 
-            $request = wp_remote_request(self::TEMPLATES);
-            
-            // Check Error not exist
-            if (!is_wp_error($request)) {
-                $response = json_decode(wp_remote_retrieve_body($request), true);
-                set_transient(self::TRANSIENT_TEMPLATE, $response, 12 * HOUR_IN_SECONDS);
-            } else {
-                $response = $request->get_error_message();
-            }
-        }
+	/**
+	 * Get the template categories.
+	 *
+	 * @param bool $force_update Whether to bypass the transient cache.
+	 * @return array|string Decoded API response, or an error message.
+	 */
+	public function categories_list( $force_update = false ) {
+		return $this->cached_request( self::TRANSIENT_CATEGORY, self::CATEGORIES, 'category', HOUR_IN_SECONDS, $force_update );
+	}
 
-        return $response;
-    }
+	/**
+	 * Fetch a list endpoint, caching only well-formed responses.
+	 *
+	 * A failed request (network error, non-200, invalid JSON, or a payload
+	 * missing $required_key) is returned as an error message and is not
+	 * cached, so the next page load retries instead of showing an empty
+	 * library until the transient expires.
+	 *
+	 * @param string $transient    Transient key.
+	 * @param string $url          Endpoint URL.
+	 * @param string $required_key Key a valid response must contain.
+	 * @param int    $expiration   Cache lifetime in seconds.
+	 * @param bool   $force_update Whether to bypass the transient cache.
+	 * @return array|string Decoded API response, or an error message.
+	 */
+	private function cached_request( $transient, $url, $required_key, $expiration, $force_update ) {
+		$cached = get_transient( $transient );
+		if ( is_array( $cached ) && ! $force_update ) {
+			return $cached;
+		}
 
-    /**
-     * Get a templates categories.
-     * @return mixed|\WP_Error
-     */
-    public function categories_list($force_update = false) {
-        $response = get_transient(self::TRANSIENT_CATEGORY);
+		$request = wp_remote_get( $url, array( 'timeout' => 30 ) );
+		if ( is_wp_error( $request ) ) {
+			return $request->get_error_message();
+		}
 
-        if (!$response || $force_update) {
+		$response = json_decode( wp_remote_retrieve_body( $request ), true );
+		if ( 200 !== (int) wp_remote_retrieve_response_code( $request ) || ! is_array( $response ) || ! isset( $response[ $required_key ] ) ) {
+			return __( 'Unable to load the layouts library. Please try again later.', 'layouts-for-wpbakery' );
+		}
 
-            $request = wp_remote_request(self::CATEGORIES);
-            
-            // Check Error not exist
-            if (!is_wp_error($request)) {
-                $response = json_decode(wp_remote_retrieve_body($request), true);
-                set_transient(self::TRANSIENT_CATEGORY, $response, 1 * HOUR_IN_SECONDS);
-            } else {
-                $response = $request->get_error_message();
-            }
-        }
-        return $response;
-    }
+		set_transient( $transient, $response, $expiration );
+		return $response;
+	}
 
-    /**
-     * Get a single template content.
-     *
-     * @param int $template_id Template ID.
-     * @return mixed|\WP_Error
-     */
-    public function get_template_content($template_id) {
-        $url = sprintf(self::$template_url, $template_id);
+	/**
+	 * Get a single template's content.
+	 *
+	 * @param int $template_id Template ID.
+	 * @return array|string|\WP_Error Template data, an API message string, or an error.
+	 */
+	public function get_template_content( $template_id ) {
+		$url = sprintf( self::$template_url, (int) $template_id );
 
-        $response = wp_remote_request($url);
+		$response = wp_remote_get( $url, array( 'timeout' => 30 ) );
 
-        if (is_wp_error($response)) {
-            return $response;
-        }
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
 
-        $response_code = (int) wp_remote_retrieve_response_code($response);
-        if (200 !== $response_code) {
-            return new \WP_Error('response_code_error', sprintf('The request returned with a status code of %s.', $response_code));
-        }
+		$response_code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $response_code ) {
+			/* translators: %d: HTTP status code. */
+			return new \WP_Error( 'response_code_error', sprintf( __( 'The request returned with a status code of %d.', 'layouts-for-wpbakery' ), $response_code ) );
+		}
 
-        $template_content = json_decode(wp_remote_retrieve_body($response), true);
-        if (isset($template_content['message']) && !empty($template_content['message'])) {
-            return $template_content['message'];
-        }
+		$template_content = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $template_content ) ) {
+			return new \WP_Error( 'template_data_error', __( 'An invalid data was returned.', 'layouts-for-wpbakery' ) );
+		}
 
-        if (isset($template_content['error'])) {
-            return new \WP_Error('response_error', $template_content['error']);
-        }
+		if ( ! empty( $template_content['message'] ) ) {
+			return (string) $template_content['message'];
+		}
 
-        if (empty($template_content['title']) && empty($template_content['template'])) {
-            return new \WP_Error('template_data_error', 'An invalid data was returned.');
-        }
+		if ( isset( $template_content['error'] ) ) {
+			return new \WP_Error( 'response_error', (string) $template_content['error'] );
+		}
 
-        return $template_content;
-    }
+		if ( empty( $template_content['title'] ) && empty( $template_content['template'] ) ) {
+			return new \WP_Error( 'template_data_error', __( 'An invalid data was returned.', 'layouts-for-wpbakery' ) );
+		}
 
-    /**
-     * Get a single Image.
-     *
-     * @param int $media_id Media ID.
-     * @return mixed|\WP_Error
-     */
-    public function get_media_image($media_id) {
-        $url = sprintf(self::$image_url, $media_id);
-        $response = wp_remote_request($url);
-        if (is_wp_error($response)) {
-            return $response;
-        }
+		return $template_content;
+	}
 
-        $response_code = (int) wp_remote_retrieve_response_code($response);
-        if (200 !== $response_code) {
-            return new \WP_Error('response_code_error', sprintf('The request returned with a status code of %s.', $response_code));
-        }
+	/**
+	 * Get a single image URL by remote media ID.
+	 *
+	 * @param int $media_id Remote media ID.
+	 * @return string|\WP_Error Image URL, 'Missing Attachment', empty string, or an error.
+	 */
+	public function get_media_image( $media_id ) {
+		$url = sprintf( self::$image_url, (int) $media_id );
 
-        $image_array = json_decode(wp_remote_retrieve_body($response), true);
-        if (isset($image_array['msg']) && !empty($image_array['msg']) && $image_array['msg'] == 'Missing Attachment') {
-            return $image_array['msg'];
-        }
+		$response = wp_remote_get( $url, array( 'timeout' => 30 ) );
 
-        if (isset($image_array) && !empty($image_array)) {
-            return $image_array['image_url'];
-        }
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
 
-        return $image_array;
-    }
+		$response_code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $response_code ) {
+			/* translators: %d: HTTP status code. */
+			return new \WP_Error( 'response_code_error', sprintf( __( 'The request returned with a status code of %d.', 'layouts-for-wpbakery' ), $response_code ) );
+		}
 
+		$image_array = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( isset( $image_array['msg'] ) && 'Missing Attachment' === $image_array['msg'] ) {
+			return $image_array['msg'];
+		}
+
+		if ( ! empty( $image_array['image_url'] ) && is_string( $image_array['image_url'] ) ) {
+			return $image_array['image_url'];
+		}
+
+		return '';
+	}
 }
 
-new Layouts_WPB_Remote();
+Layouts_WPB_Remote::lfw_get_instance();

@@ -3,197 +3,250 @@
  * Plugin Name: Layouts for WPBakery
  * Plugin URI: https://www.techeshta.com/product/layouts-for-wpbakery/
  * Description: Beautifully designed, Free templates, Handcrafted for popular WPBakery page builder.
- * Version: 1.1.5
+ * Version: 2.0
+ * Requires at least: 5.8
+ * Requires PHP: 7.4
+ * Tested up to: 7.1
  * Author: Techeshta
  * Author URI: https://www.techeshta.com
  * License: GPLv2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- *
  * Text Domain: layouts-for-wpbakery
  * Domain Path: /languages/
+ *
+ * @package Layouts_For_WPBakery
  */
-/*
- * Exit if accessed directly
- */
-if (!defined('ABSPATH')) {
-    exit;
+
+// Exit if accessed directly.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /*
- * Define variables
+ * Plugin constants.
  */
-define('LFW_FILE', __FILE__);
-define('LFW_DIR', plugin_dir_path(LFW_FILE));
-define('LFW_URL', plugins_url('/', LFW_FILE));
-define('LFW_TEXTDOMAIN', 'layouts-for-wpbakery');
+define( 'LFW_FILE', __FILE__ );
+define( 'LFW_DIR', plugin_dir_path( LFW_FILE ) );
+define( 'LFW_URL', plugins_url( '/', LFW_FILE ) );
+define( 'LFW_TEXTDOMAIN', 'layouts-for-wpbakery' );
 
 /**
- * Main Plugin Layouts_For_WPBakery class.
+ * Main plugin class.
+ *
+ * Registers the "Layouts" admin screen, its assets, and the WPBakery
+ * dependency notices. The remote API client and the importer live in
+ * includes/.
  */
 class Layouts_For_WPBakery {
 
-    /**
-     * Layouts_For_WPBakery constructor.
-     *
-     * The main plugin actions registered for WordPress
-     */
-    public function __construct() {
-        add_action('init', array($this, 'lfw_check_dependencies'));
-        $this->hooks();
-        $this->lfw_include_files();
-    }
+	/**
+	 * Plugin version, used for asset cache-busting. Keep in sync with the
+	 * "Version" header above and readme.txt's "Stable tag".
+	 *
+	 * @var string
+	 */
+	const VERSION = '2.0';
 
-    /**
-     * Initialize
-     */
-    public function hooks() {
-        add_action('admin_enqueue_scripts', array($this, 'lfw_admin_scripts',));
-        register_activation_hook(LFW_FILE, array($this, 'lfw_plugin_activation'));
-    }
+	/**
+	 * Minimum WPBakery Page Builder version this plugin supports.
+	 *
+	 * @var string
+	 */
+	const MINIMUM_WPBAKERY_VERSION = '5.0';
 
-    /**
-     * Load files
-     */
-    public function lfw_include_files() {
-        include_once( LFW_DIR . 'includes/class-layout-importer.php' );
-        include_once( LFW_DIR . 'includes/api/class-layouts-remote.php' );
-    }
+	/**
+	 * Nonce action shared by the plugin's AJAX requests.
+	 *
+	 * Plugin-specific on purpose: the sibling Layouts for Elementor plugin
+	 * uses the generic 'ajax-nonce' action.
+	 *
+	 * @var string
+	 */
+	const NONCE_ACTION = 'lfw-ajax-nonce';
 
-    /**
-     * Check plugin dependencies
-     * Check if WPBakery plugin is installed
-     */
-    public function lfw_check_dependencies() {
+	/**
+	 * Layouts_For_WPBakery constructor.
+	 *
+	 * Registers the main plugin actions with WordPress.
+	 */
+	public function __construct() {
+		add_action( 'init', array( $this, 'lfw_check_dependencies' ) );
+		$this->hooks();
+		$this->lfw_include_files();
+	}
 
-        if (!defined('WPB_VC_VERSION')) {
-            add_action('admin_notices', array($this, 'lfw_layouts_widget_fail_load'));
-            return;
-        } else {
-            add_action('admin_menu', array($this, 'lfw_menu'));
-        }
-        $wpbakery_version_required = '5.0';
-        if (!version_compare(WPB_VC_VERSION, $wpbakery_version_required, '>=')) {
-            add_action('admin_notices', array($this, 'lfw_layouts_wpbakery_update_notice'));
-            return;
-        }
-    }
+	/**
+	 * Register hooks that do not depend on WPBakery being active.
+	 *
+	 * @return void
+	 */
+	public function hooks() {
+		add_action( 'admin_enqueue_scripts', array( $this, 'lfw_admin_scripts' ) );
+		register_activation_hook( LFW_FILE, array( $this, 'lfw_plugin_activation' ) );
+	}
 
-    /**
-     * This notice will appear if WPBakery is not installed or activated or both
-     */
-    public function lfw_layouts_widget_fail_load() {
+	/**
+	 * Load the remote API client and the importer.
+	 *
+	 * @return void
+	 */
+	public function lfw_include_files() {
+		require_once LFW_DIR . 'includes/api/class-layouts-remote.php';
+		require_once LFW_DIR . 'includes/class-layout-importer.php';
+	}
 
-        $screen = get_current_screen();
-        if (isset($screen->parent_file) && 'plugins.php' === $screen->parent_file && 'update' === $screen->id) {
-            return;
-        }
+	/**
+	 * Check that WPBakery Page Builder is active and recent enough.
+	 *
+	 * Adds the admin menu when it is, otherwise shows an admin notice.
+	 *
+	 * @return void
+	 */
+	public function lfw_check_dependencies() {
 
-        $plugin = 'js_composer/js_composer.php';
-        $file_path = 'js_composer/js_composer.php';
-        $installed_plugins = get_plugins();
+		if ( ! defined( 'WPB_VC_VERSION' ) ) {
+			add_action( 'admin_notices', array( $this, 'lfw_layouts_widget_fail_load' ) );
+			return;
+		}
 
-        if (isset($installed_plugins[$file_path])) { // check if plugin is installed
-            if (!current_user_can('activate_plugins')) {
-                return;
-            }
-            $activation_url = wp_nonce_url('plugins.php?action=activate&amp;plugin=' . $plugin . '&amp;plugin_status=all&amp;paged=1&amp;s', 'activate-plugin_' . $plugin);
+		if ( ! version_compare( WPB_VC_VERSION, self::MINIMUM_WPBAKERY_VERSION, '>=' ) ) {
+			add_action( 'admin_notices', array( $this, 'lfw_layouts_wpbakery_update_notice' ) );
+			return;
+		}
 
-            $message = '<p><strong>' . esc_html__('Layouts for WPBakery', 'layouts-for-wpbakery') . '</strong>' . esc_html__(' plugin not working because you need to activate the WPBakery plugin.', 'layouts-for-wpbakery') . '</p>';
-            $message .= '<p>' . sprintf('<a href="%s" class="button-primary">%s</a>', $activation_url, esc_html__('Activate WPBakery Now', 'layouts-for-wpbakery')) . '</p>';
-        } else {
-            if (!current_user_can('install_plugins')) {
-                return;
-            }
+		add_action( 'admin_menu', array( $this, 'lfw_menu' ) );
+	}
 
-            $buy_now_url = esc_url('https://wpbakery.com');
+	/**
+	 * Admin notice shown when WPBakery is not installed and/or not active.
+	 *
+	 * @return void
+	 */
+	public function lfw_layouts_widget_fail_load() {
 
-            $message = '<p><strong>' . esc_html__('Layouts for WPBakery', 'layouts-for-wpbakery') . '</strong>' . esc_html__(' plugin not working because you need to install the WPBakery plugin', 'layouts-for-wpbakery') . '</p>';
-            $message .= '<p>' . sprintf('<a href="%s" class="button-primary" target="_blank">%s</a>', $buy_now_url, esc_html__('Get WPBakery', 'layouts-for-wpbakery')) . '</p>';
-        }
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( isset( $screen->parent_file ) && 'plugins.php' === $screen->parent_file && 'update' === $screen->id ) {
+			return;
+		}
 
-        echo '<div class="error"><p>' . wp_kses_post($message) . '</p></div>';
-    }
+		if ( ! function_exists( 'get_plugins' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
 
-    /**
-     * Display admin notice for WPBakery update if WPBakery version is old
-     */
-    public function lfw_layouts_wpbakery_update_notice() {
-        if (!current_user_can('update_plugins')) {
-            return;
-        }
+		$plugin            = 'js_composer/js_composer.php';
+		$installed_plugins = get_plugins();
 
-        $file_path = 'js_composer/js_composer.php';
+		if ( isset( $installed_plugins[ $plugin ] ) ) {
+			if ( ! current_user_can( 'activate_plugins' ) ) {
+				return;
+			}
+			$activation_url = wp_nonce_url( admin_url( 'plugins.php?action=activate&plugin=' . rawurlencode( $plugin ) . '&plugin_status=all&paged=1' ), 'activate-plugin_' . $plugin );
 
-        $upgrade_link = esc_url('https://wpbakery.com');
-        $message = '<p><strong>' . esc_html__('Layouts for WPBakery', 'layouts-for-wpbakery') . '</strong>' . esc_html__(' plugin not working because you are using an old version of WPBakery.', 'layouts-for-wpbakery') . '</p>';
-        $message .= '<p>' . sprintf('<a href="%s" class="button-primary" target="_blank">%s</a>', $upgrade_link, esc_html__('Get Latest WPBakery', 'layouts-for-wpbakery')) . '</p>';
-        echo '<div class="error">' . wp_kses_post($message) . '</div>';
-    }
+			$message  = '<p><strong>' . esc_html__( 'Layouts for WPBakery', 'layouts-for-wpbakery' ) . '</strong>' . esc_html__( ' plugin not working because you need to activate the WPBakery plugin.', 'layouts-for-wpbakery' ) . '</p>';
+			$message .= '<p>' . sprintf( '<a href="%s" class="button-primary">%s</a>', esc_url( $activation_url ), esc_html__( 'Activate WPBakery Now', 'layouts-for-wpbakery' ) ) . '</p>';
+		} else {
+			if ( ! current_user_can( 'install_plugins' ) ) {
+				return;
+			}
 
-    /**
-     *
-     * @return plugin activate function
-     */
-    public function lfw_plugin_activation() {
-        // Deactivate Layouts for WPBakery (premium) plugin than activate Layouts for WPBakery (free) plugin
-        deactivate_plugins('layouts-pro-for-wpbakery/layouts-pro-for-wpbakery.php');
-    }
+			$message  = '<p><strong>' . esc_html__( 'Layouts for WPBakery', 'layouts-for-wpbakery' ) . '</strong>' . esc_html__( ' plugin not working because you need to install the WPBakery plugin', 'layouts-for-wpbakery' ) . '</p>';
+			$message .= '<p>' . sprintf( '<a href="%s" class="button-primary" target="_blank" rel="noopener noreferrer">%s</a>', esc_url( 'https://wpbakery.com' ), esc_html__( 'Get WPBakery', 'layouts-for-wpbakery' ) ) . '</p>';
+		}
 
-    /**
-     *
-     * @return Enqueue admin panel required css/js
-     */
-    public function lfw_admin_scripts() {
-        $screen = get_current_screen();
+		echo '<div class="notice notice-error">' . wp_kses_post( $message ) . '</div>';
+	}
 
-        wp_register_style('lfw-admin-stylesheets', LFW_URL . 'assets/css/admin.css', array(), 1.0, false);
-        wp_register_style('lfw-toastify-stylesheets', LFW_URL . 'assets/css/toastify.css', array(), 1.0, false);
-        wp_register_script('lfw-admin-script', LFW_URL . 'assets/js/admin.js', array('jquery'), '1.0.0', true);
-        wp_register_script('lfw-toastify-script', LFW_URL . 'assets/js/toastify.js', array('jquery'), '1.0.0', true);
-        wp_localize_script('lfw-admin-script', 'js_object', array(
-            'lfw_loading' => __('Importing...', 'layouts-for-wpbakery'),
-            'lfw_tem_msg' => __('Template is successfully imported!.', 'layouts-for-wpbakery'),
-            'lfw_msg' => __('Your page is successfully imported!', 'layouts-for-wpbakery'),
-            'lfw_crt_page' => __('Please Enter Page Name.', 'layouts-for-wpbakery'),
-            'lfw_sync' => __('Syncing...', 'layouts-for-wpbakery'),
-            'lfw_sync_suc' => __('Templates library refreshed', 'layouts-for-wpbakery'),
-            'lfw_sync_fai' => __('Error in library Syncing', 'layouts-for-wpbakery'),
-            'lfw_error' => __('Something went wrong. Please try again.', 'layouts-for-wpbakery'),
-            'lfw_url' => LFW_URL,
-            'nonce' => wp_create_nonce('ajax-nonce')
-        ));
+	/**
+	 * Admin notice shown when the active WPBakery is older than MINIMUM_WPBAKERY_VERSION.
+	 *
+	 * @return void
+	 */
+	public function lfw_layouts_wpbakery_update_notice() {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			return;
+		}
 
-        if ((isset($_GET['page']) && ( $_GET['page'] == 'lfw_layouts' || $_GET['page'] == 'lfw_started'))) {
-            wp_enqueue_style('lfw-admin-stylesheets');
-            wp_enqueue_style('lfw-toastify-stylesheets');
-            wp_enqueue_script('lfw-toastify-script');
-            wp_enqueue_script('lfw-admin-script');
-            wp_enqueue_script('lfw-admin-live-script');
-            add_thickbox();
-        }
-    }
+		$message  = '<p><strong>' . esc_html__( 'Layouts for WPBakery', 'layouts-for-wpbakery' ) . '</strong>' . esc_html__( ' plugin not working because you are using an old version of WPBakery.', 'layouts-for-wpbakery' ) . '</p>';
+		$message .= '<p>' . sprintf( '<a href="%s" class="button-primary" target="_blank" rel="noopener noreferrer">%s</a>', esc_url( 'https://wpbakery.com' ), esc_html__( 'Get Latest WPBakery', 'layouts-for-wpbakery' ) ) . '</p>';
+		echo '<div class="notice notice-error">' . wp_kses_post( $message ) . '</div>';
+	}
 
-    /**
-     *
-     * add menu at admin panel
-     */
-    public function lfw_menu() {
-        add_menu_page(__('Layouts', 'layouts-for-wpbakery'), __('Layouts', 'layouts-for-wpbakery'), 'administrator', 'lfw_layouts', 'lfw_layouts_function', LFW_URL . 'assets/images/layouts-for-wpbakery.png');
+	/**
+	 * Activation hook: deactivate the premium Layouts Pro for WPBakery plugin.
+	 *
+	 * The free and premium plugins register the same admin screen and AJAX
+	 * handlers, so they must never be active at the same time.
+	 *
+	 * @return void
+	 */
+	public function lfw_plugin_activation() {
+		deactivate_plugins( 'layouts-pro-for-wpbakery/layouts-pro-for-wpbakery.php' );
+	}
 
-        /**
-         *
-         * @global type $wp_version
-         * @return html Display setting options
-         */
-        function lfw_layouts_function() {
-            include_once( 'includes/layouts.php' );
-        }
+	/**
+	 * Register admin CSS/JS, and enqueue them on the plugin's own screen only.
+	 *
+	 * @return void
+	 */
+	public function lfw_admin_scripts() {
+		wp_register_style( 'lfw-admin-stylesheets', LFW_URL . 'assets/css/admin.css', array(), self::VERSION, 'all' );
+		wp_register_style( 'lfw-toastify-stylesheets', LFW_URL . 'assets/css/toastify.css', array(), self::VERSION, 'all' );
+		wp_register_script( 'lfw-admin-script', LFW_URL . 'assets/js/admin.js', array( 'jquery' ), self::VERSION, true );
+		wp_register_script( 'lfw-toastify-script', LFW_URL . 'assets/js/toastify.js', array( 'jquery' ), self::VERSION, true );
+		wp_localize_script(
+			'lfw-admin-script',
+			'lfw_js_object',
+			array(
+				'lfw_loading'  => esc_html__( 'Importing...', 'layouts-for-wpbakery' ),
+				'lfw_tem_msg'  => esc_html__( 'Template is successfully imported!.', 'layouts-for-wpbakery' ),
+				'lfw_msg'      => esc_html__( 'Your page is successfully imported!', 'layouts-for-wpbakery' ),
+				'lfw_crt_page' => esc_html__( 'Please Enter Page Name.', 'layouts-for-wpbakery' ),
+				'lfw_sync'     => esc_html__( 'Syncing...', 'layouts-for-wpbakery' ),
+				'lfw_sync_suc' => esc_html__( 'Templates library refreshed', 'layouts-for-wpbakery' ),
+				'lfw_sync_fai' => esc_html__( 'Error in library Syncing', 'layouts-for-wpbakery' ),
+				'lfw_error'    => esc_html__( 'Something went wrong. Please try again.', 'layouts-for-wpbakery' ),
+				'lfw_url'      => LFW_URL,
+				'nonce'        => wp_create_nonce( self::NONCE_ACTION ),
+			)
+		);
 
-    }
+		$page = isset( $_GET['page'] ) ? sanitize_key( $_GET['page'] ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only used to decide whether to enqueue assets.
+		if ( 'lfw_layouts' === $page ) {
+			wp_enqueue_style( 'lfw-admin-stylesheets' );
+			wp_enqueue_style( 'lfw-toastify-stylesheets' );
+			wp_enqueue_script( 'lfw-toastify-script' );
+			wp_enqueue_script( 'lfw-admin-script' );
+			add_thickbox();
+		}
+	}
 
+	/**
+	 * Add the "Layouts" top-level admin menu.
+	 *
+	 * @return void
+	 */
+	public function lfw_menu() {
+		add_menu_page(
+			esc_html__( 'Layouts', 'layouts-for-wpbakery' ),
+			esc_html__( 'Layouts', 'layouts-for-wpbakery' ),
+			'manage_options',
+			'lfw_layouts',
+			array( $this, 'lfw_layouts_page' ),
+			LFW_URL . 'assets/images/layouts-for-wpbakery.png'
+		);
+	}
+
+	/**
+	 * Render the "Layouts" admin page.
+	 *
+	 * @return void
+	 */
+	public function lfw_layouts_page() {
+		include_once LFW_DIR . 'includes/layouts.php';
+	}
 }
 
 /*
- * Starts our plugin class, easy!
+ * Start the plugin.
  */
 new Layouts_For_WPBakery();

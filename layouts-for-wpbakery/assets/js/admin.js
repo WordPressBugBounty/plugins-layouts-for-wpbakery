@@ -81,6 +81,22 @@ jQuery(document).ready(function () {
         jQuery('input[type=text]').val('');
     });
 
+    //Show the sync result, then reload so the refreshed library renders.
+    function lfwSyncDone(ok) {
+        setTimeout(function () {
+            Toastify({
+                text: ok ? lfw_js_object.lfw_sync_suc : lfw_js_object.lfw_sync_fai,
+                gravity: "right",
+                duration: 4500,
+                close: true,
+                backgroundColor: "linear-gradient(135deg, rgb( 99, 89, 241 ) 0%, rgb( 49, 181, 251 ) 100%)",
+            }).showToast();
+        }, 2000);
+        setTimeout(function () {
+            window.location.href = lef_cur_url;
+        }, 5000);
+    }
+
     //sync latest template
     jQuery(".lfw-sync-btn").on('click', function () {
 
@@ -88,43 +104,19 @@ jQuery(document).ready(function () {
             type: 'post',
             url: ajaxurl,
             data: {
-                action: 'handle_sync',
-                nonce: js_object.nonce,
+                action: 'lfw_handle_sync',
+                nonce: lfw_js_object.nonce,
             },
             beforeSend: function () {
-                jQuery('.lfw-sync-btn').text(js_object.lfw_sync);
+                jQuery('.lfw-sync-btn').text(lfw_js_object.lfw_sync);
             },
             success: function (res) {
-                var res = res.slice(0, -1);
-                if (res == 'success') {
-                    setTimeout(function () {
-                        Toastify({
-                            text: js_object.lfw_sync_suc,
-                            gravity: "right",
-                            duration: 4500,
-                            close: true,
-                            backgroundColor: "linear-gradient(135deg, rgb( 99, 89, 241 ) 0%, rgb( 49, 181, 251 ) 100%)",
-                        }).showToast();
-                    }, 2000);
-                    setTimeout(function () {
-                        window.location.href = lef_cur_url;
-                    }, 5000);
-                } else {
-                    setTimeout(function () {
-                        Toastify({
-                            text: js_object.lfw_sync_fai,
-                            gravity: "right",
-                            duration: 4500,
-                            close: true,
-                            backgroundColor: "linear-gradient(135deg, rgb( 99, 89, 241 ) 0%, rgb( 49, 181, 251 ) 100%)",
-                        }).showToast();
-                    }, 2000);
-                    setTimeout(function () {
-                        window.location.href = lef_cur_url;
-                    }, 5000);
-                }
+                // The handler prints exactly "success" or "error".
+                lfwSyncDone(jQuery.trim(res) === 'success');
             },
-
+            error: function () {
+                lfwSyncDone(false);
+            },
         });
     });
 
@@ -137,24 +129,31 @@ jQuery(document).ready(function () {
             type: 'post',
             url: ajaxurl,
             data: {
-                action: 'handle_import',
+                action: 'lfw_handle_import',
                 template_id: template_id,
                 with_page: with_page,
-                nonce: js_object.nonce,
+                nonce: lfw_js_object.nonce,
             },
             beforeSend: function () {
                 jQuery('.lfw-create-page-btn').addClass('lfw-disabled');
                 jQuery(".lfw-import-btn").hide();
                 jQuery(".lfw-loader").html("<div class='lfw-gradient-loader'></div>");
-
             },
             success: function (result) {
                 jQuery(".lfw-loader").hide();
-                if (result == 0) {
-                    jQuery(".lfw-msg").text(js_object.lfw_error);
+                // A templates library import prints "success" (there is no
+                // post to link to); a page import (if a page name was typed)
+                // prints the new page ID; anything else is an error message.
+                result = jQuery.trim(result);
+                if (result === 'success' || /^[1-9][0-9]*$/.test(result)) {
+                    jQuery(".lfw-msg").text(lfw_js_object.lfw_tem_msg);
                 } else {
-                    jQuery(".lfw-msg").text(js_object.lfw_tem_msg);
+                    jQuery(".lfw-msg").text(result || lfw_js_object.lfw_error);
                 }
+            },
+            error: function () {
+                jQuery(".lfw-loader").hide();
+                jQuery(".lfw-msg").text(lfw_js_object.lfw_error);
             },
             setTimeout: 1000,
         });
@@ -174,7 +173,7 @@ jQuery(document).ready(function () {
 
         //check page name not empty
         if (with_page == "") {
-            alert(js_object.lfw_crt_page);
+            alert(lfw_js_object.lfw_crt_page);
             jQuery(".lfw-page-name-" + template_id).addClass("lef-required");
             jQuery(".lfw-page-" + template_id).addClass("lef-required");
             return false;
@@ -184,10 +183,10 @@ jQuery(document).ready(function () {
             type: 'post',
             url: ajaxurl,
             data: {
-                action: 'handle_import',
+                action: 'lfw_handle_import',
                 template_id: template_id,
                 with_page: with_page,
-                nonce: js_object.nonce,
+                nonce: lfw_js_object.nonce,
             },
             beforeSend: function () {
                 jQuery('.lfw-import-btn').addClass('lfw-disabled');
@@ -197,20 +196,20 @@ jQuery(document).ready(function () {
             },
             success: function (result) {
                 jQuery(".lfw-page-create, .lfw-loader-page").hide();
-                if (typeof result == 'string') {
-                    if (jQuery.isNumeric(result)) {
-                        if (result == 0) {
-                            jQuery(".lfw-page-error").show();
-                            jQuery(".lfw-error").text(js_object.lfw_error);
-                        } else {
-                            jQuery(".lfw-page-edit").show();
-                            jQuery(".lfw-edit-page").attr("href", lef_res + 'post.php?post=' + result + "&action=edit");
-                        }
-                    } else {
-                        jQuery(".lfw-page-error").show();
-                        jQuery(".lfw-error").text(result);
-                    }
+                // The handler prints the new post ID on success, or an error message.
+                result = jQuery.trim(result);
+                if (/^[1-9][0-9]*$/.test(result)) {
+                    jQuery(".lfw-page-edit").show();
+                    jQuery(".lfw-edit-page").attr("href", lef_res + 'post.php?post=' + result + "&action=edit");
+                } else {
+                    jQuery(".lfw-page-error").show();
+                    jQuery(".lfw-error").text(result || lfw_js_object.lfw_error);
                 }
+            },
+            error: function () {
+                jQuery(".lfw-page-create, .lfw-loader-page").hide();
+                jQuery(".lfw-page-error").show();
+                jQuery(".lfw-error").text(lfw_js_object.lfw_error);
             },
             setTimeout: 1000,
         });
